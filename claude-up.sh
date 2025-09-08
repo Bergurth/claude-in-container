@@ -9,6 +9,17 @@ PROJECT_INPUT="${1:-$(pwd)}"
 PROJECT_ROOT="$(cd "$PROJECT_INPUT" && pwd)"
 export PROJECT_ROOT
 
+# Default container name; allow --name foo or --name=foo
+NAME="claude-code"
+for ((i=1; i<=$#; i++)); do
+  eval "arg=\${$i}"
+  if [[ "$arg" == --name=* ]]; then
+    NAME="${arg#--name=}"; break
+  elif [[ "$arg" == "--name" ]]; then
+    j=$((i+1)); eval "NAME=\${$j-}"; break
+  fi
+done
+
 # Pick Compose (plugin or legacy)
 if docker compose version >/dev/null 2>&1; then
   COMPOSE="docker compose"
@@ -41,7 +52,7 @@ export CLAUDE_SETTINGS_DIR
 echo "Mounting: $PROJECT_ROOT -> /app"
 if [[ $YOLO -eq 1 ]]; then
   echo "YOLO: passing --dangerously-skip-permissions to claude CLI"
-  exec $COMPOSE -f compose.yml run --rm --name claude-code -it claude claude --dangerously-skip-permissions
+  exec $COMPOSE -f compose.yml run --rm --name "$NAME" -it claude claude --dangerously-skip-permissions
 else
-  exec $COMPOSE -f compose.yml run --rm --name claude-code -it claude
+  exec $COMPOSE -f compose.yml run --rm --name "$NAME" -it claude
 fi
