@@ -44,7 +44,7 @@ export LOCAL_GID="$(id -g)"
   || { export LOCAL_UID="$(id -u)"; export LOCAL_GID="$(id -g)"; }
 
 # Where to persist settings on your host:
-CLAUDE_SETTINGS_DIR="${CLAUDE_SETTINGS_DIR:-$HOME/.claude-settings}"
+CLAUDE_SETTINGS_DIR="${CLAUDE_SETTINGS_DIR:-$HOME/.claude-settings${NAME:+-$NAME}}"
 mkdir -p "$CLAUDE_SETTINGS_DIR"                 # ensure it exists
 export CLAUDE_SETTINGS_DIR
 
