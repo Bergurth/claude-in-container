@@ -1,0 +1,26 @@
+services:
+  claude-sec:
+    image: claude-code-sec
+    working_dir: /app
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    environment:
+      # Force all config/cache/data to live under /settings (persisted)
+      - HOME=/settings
+      - XDG_CONFIG_HOME=/settings/config
+      - XDG_CACHE_HOME=/settings/cache
+      - XDG_DATA_HOME=/settings/data
+      # Security tool environment variables
+      - GOPATH=/settings/go
+      - PATH=/usr/local/go/bin:/root/go/bin:/settings/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    volumes:
+      - ${PROJECT_ROOT}:/app
+      - ${CLAUDE_SETTINGS_DIR}:/settings
+      - ${SECURITY_RESULTS_DIR:-./security-results}:/security/results
+      - ${WORDLISTS_DIR:-./wordlists}:/security/wordlists
+    stdin_open: true
+    tty: true
+    network_mode: "bridge"
+    # Add capabilities for network tools (use carefully)
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
