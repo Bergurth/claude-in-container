@@ -88,5 +88,8 @@ RUN wget -q https://raw.githubusercontent.com/danielmiessler/SecLists/master/Dis
 WORKDIR /app
 COPY . /app
 
-# Default command
-CMD ["claude"]
+# Make security wrapper executable
+RUN chmod +x /app/security-claude-wrapper.sh
+
+# Default command uses security-aware wrapper
+CMD ["/app/security-claude-wrapper.sh"]
