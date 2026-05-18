@@ -15,15 +15,17 @@ This project provides a Docker-based setup to run Claude Code in an isolated con
 
 2. Run Claude Code on your project:
    ```bash
-   ./claude-up.sh [PATH_TO_PROJECT]
+   ./claude-up.sh [PATH_TO_PROJECT] [PATH_TO_PROJECT_2] [PATH_TO_PROJECT_3] ...
    ```
 
-   If no path is provided, it uses the current directory.
+   - If no path is provided, it uses the current directory
+   - Supports up to 5 project directories simultaneously
+   - Additional directories are mounted as `/app_2`, `/app_3`, etc.
 
 ## Basic Features
 
 - **Containerized Claude Code**: Runs Claude Code CLI in an isolated Ubuntu container
-- **Project mounting**: Your project directory is mounted to `/app` in the container
+- **Multi-project mounting**: Your project directories are mounted to `/app`, `/app_2`, `/app_3`, etc. in the container
 - **Persistent settings**: Claude settings are preserved in `~/.claude-settings` on the host
 - **User permissions**: Maintains proper file ownership using your local UID/GID
 - **Multiple instances**: Support for named containers with `--name` flag
@@ -53,12 +55,24 @@ This project provides a Docker-based setup to run Claude Code in an isolated con
 # Run on specific project
 ./claude-up.sh /path/to/my/project
 
+# Run with multiple projects
+./claude-up.sh /path/to/project1 /path/to/project2
+
+# Run with up to 5 projects
+./claude-up.sh ~/frontend ~/backend ~/docs ~/scripts ~/config
+
+# Combine multiple projects with flags
+./claude-up.sh /path/to/project1 /path/to/project2 --name multi-dev
+
 # Run with custom container name
-./claude-up.sh --name my-project
+./claude-up.sh --name=my-project
 
 # Run with root permissions (use carefully)
 ./claude-up.sh --root
 
 # Run in YOLO mode (bypasses permissions)
 ./claude-up.sh --yolo
+
+# Multiple projects with different options
+./claude-up.sh ~/django-app ~/react-frontend --name=fullstack --yolo
 ```
