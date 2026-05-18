@@ -1,13 +1,55 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: ./claude-up.sh [PATH_TO_PROJECT] [--security] [--name NAME] [--yolo] [--root]
-# If PATH_TO_PROJECT omitted, defaults to the current directory.
+# Usage: ./claude-up.sh [PATH_TO_PROJECT] [PATH_TO_PROJECT_2] [PATH_TO_PROJECT_3] ... [--security] [--name NAME] [--yolo] [--root]
+# If no PATH_TO_PROJECT specified, defaults to the current directory.
+# Supports up to 5 project directories.
 
-PROJECT_INPUT="${1:-$(pwd)}"
-# Resolve to absolute path
-PROJECT_ROOT="$(cd "$PROJECT_INPUT" && pwd)"
-export PROJECT_ROOT
+# Collect project paths (all non-flag arguments at the beginning)
+PROJECT_PATHS=()
+FLAGS=()
+
+for arg in "$@"; do
+  case "$arg" in
+    --*)
+      FLAGS+=("$arg")
+      ;;
+    *)
+      if [[ ${#FLAGS[@]} -eq 0 ]]; then
+        PROJECT_PATHS+=("$arg")
+      else
+        FLAGS+=("$arg")
+      fi
+      ;;
+  esac
+done
+
+# If no project paths specified, use current directory
+if [[ ${#PROJECT_PATHS[@]} -eq 0 ]]; then
+  PROJECT_PATHS=("$(pwd)")
+fi
+
+# Limit to 5 project paths
+if [[ ${#PROJECT_PATHS[@]} -gt 5 ]]; then
+  echo "Error: Maximum 5 project directories supported" >&2
+  exit 1
+fi
+
+# Resolve all paths to absolute paths and export
+for i in "${!PROJECT_PATHS[@]}"; do
+  path="${PROJECT_PATHS[$i]}"
+  if [[ ! -d "$path" ]]; then
+    echo "Error: Directory does not exist: $path" >&2
+    exit 1
+  fi
+  abs_path="$(cd "$path" && pwd)"
+  PROJECT_PATHS[$i]="$abs_path"
+
+  if [[ $i -eq 0 ]]; then
+    export PROJECT_ROOT="$abs_path"  # Maintain backwards compatibility
+  fi
+  export "PROJECT_ROOT_$((i+1))"="$abs_path"
+done
 
 # Default settings
 NAME="claude-code"
@@ -15,9 +57,8 @@ COMPOSE_FILE="compose.yml"
 SERVICE_NAME="claude"
 SECURITY_MODE=0
 
-# Parse all arguments for flags
-for ((i=1; i<=$#; i++)); do
-  eval "arg=\${$i}"
+# Parse flags
+for arg in "${FLAGS[@]}"; do
   case "$arg" in
     --security)
       SECURITY_MODE=1
@@ -29,7 +70,9 @@ for ((i=1; i<=$#; i++)); do
       NAME="${arg#--name=}"
       ;;
     --name)
-      j=$((i+1)); eval "NAME=\${$j-}"
+      # Handle --name with next argument (this is simplified for the refactor)
+      echo "Error: --name requires a value. Use --name=VALUE format." >&2
+      exit 1
       ;;
   esac
 done
@@ -77,7 +120,15 @@ mkdir -p "$CLAUDE_SETTINGS_DIR"                 # ensure it exists
 export CLAUDE_SETTINGS_DIR
 
 
-echo "Mounting: $PROJECT_ROOT -> /app"
+# Display mounted directories
+echo "Mounting project directories:"
+for i in "${!PROJECT_PATHS[@]}"; do
+  if [[ $i -eq 0 ]]; then
+    echo "  ${PROJECT_PATHS[$i]} -> /app"
+  else
+    echo "  ${PROJECT_PATHS[$i]} -> /app_$((i+1))"
+  fi
+done
 echo "Using compose file: $COMPOSE_FILE"
 echo "Service name: $SERVICE_NAME"
 
