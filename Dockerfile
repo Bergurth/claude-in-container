@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:24.04
 
 RUN apt-get update && apt-get install -y \
     npm \
@@ -12,6 +12,9 @@ RUN apt-get update && apt-get install -y \
     ripgrep \
     fd-find \
     nodejs \
+    curl \
+    wget \
+    net-tools \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g @anthropic-ai/claude-code

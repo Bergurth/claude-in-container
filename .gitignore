@@ -1,0 +1,21 @@
+# Playwright MCP runtime files
+.mcp.json
+.mcp.json.backup
+
+# Claude session data
+.claude/
+
+# Testing artifacts
+debug-network.sh
+mcp-config-standalone.json
+mcp-config-template-bridge.json
+.playwright-mcp/
+
+# Backup files
+*~
+*.backup
+
+# Development files
+dev_compose.yml
+dockerClaude_up.sh
+old-claude-up.sh

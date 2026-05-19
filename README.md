@@ -15,12 +15,13 @@ This project provides a Docker-based setup to run Claude Code in an isolated con
 
 2. Run Claude Code on your project:
    ```bash
-   ./claude-up.sh [PATH_TO_PROJECT] [PATH_TO_PROJECT_2] [PATH_TO_PROJECT_3] ...
+   ./claude-up.sh [PATH_TO_PROJECT] [PATH_TO_PROJECT_2] [PATH_TO_PROJECT_3] ... [FLAGS]
    ```
 
    - If no path is provided, it uses the current directory
    - Supports up to 5 project directories simultaneously
    - Additional directories are mounted as `/app_2`, `/app_3`, etc.
+   - See flags section below for available options
 
 ## Basic Features
 
@@ -30,6 +31,7 @@ This project provides a Docker-based setup to run Claude Code in an isolated con
 - **User permissions**: Maintains proper file ownership using your local UID/GID
 - **Multiple instances**: Support for named containers with `--name` flag
 - **Root mode**: Optional `--root` flag for elevated permissions
+- **Playwright MCP**: Optional `--playwright` flag for web automation via MCP
 
 ## Security Features
 
@@ -75,4 +77,71 @@ This project provides a Docker-based setup to run Claude Code in an isolated con
 
 # Multiple projects with different options
 ./claude-up.sh ~/django-app ~/react-frontend --name=fullstack --yolo
+
+# Enable Playwright MCP for web automation
+./claude-up.sh --playwright --name=web-testing
 ```
+
+## Playwright MCP Integration
+
+The `--playwright` flag enables web automation capabilities through the Model Context Protocol (MCP). This allows Claude to interact with web browsers for tasks like testing, scraping, and automation.
+
+### Playwright Setup
+
+1. **Enable Playwright MCP**:
+   ```bash
+   ./claude-up.sh --playwright --name=my-web-project
+   ```
+
+2. **Start Chrome with remote debugging**:
+   ```bash
+   ./start-chrome-debug.sh
+   ```
+   Or manually:
+   ```bash
+   chrome --remote-debugging-port=9222
+   ```
+
+3. **Configuration**: The MCP configuration is automatically created at:
+   ```
+   ~/.claude-settings-<name>/config/mcp.json
+   ```
+
+### Playwright Features
+
+- **Full browser control**: Navigate, click, type, extract data
+- **No screenshots needed**: Uses accessibility tree for fast, accurate interaction
+- **Chrome extension support**: Connect to existing browser instances with extensions
+- **Cross-platform**: Works on macOS, Linux, and Windows
+
+### Configuration Template
+
+The auto-generated MCP configuration (`mcp-config-template.json`):
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest",
+        "--cdp-endpoint=http://host.docker.internal:9222"
+      ]
+    }
+  }
+}
+```
+
+### Chrome Helper Script
+
+Use `./start-chrome-debug.sh` to launch Chrome with remote debugging:
+- **Default port**: 9222
+- **Custom port**: `./start-chrome-debug.sh 9223`
+- **Cross-platform**: Automatically detects Chrome installation
+- **Isolated profile**: Uses temporary user data directory
+
+### Playwright Security Notes
+
+- **Browser access**: Playwright can control your browser and access websites
+- **Remote debugging**: Chrome's remote debugging port should only be accessible locally
+- **Data isolation**: Uses temporary Chrome profile by default
+- **Network access**: Full internet access for web automation tasks

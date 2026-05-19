@@ -10,6 +10,8 @@ services:
       - XDG_CONFIG_HOME=/settings/config
       - XDG_CACHE_HOME=/settings/cache
       - XDG_DATA_HOME=/settings/data
+      # Playwright MCP configuration
+      - PLAYWRIGHT_ENABLED=${PLAYWRIGHT_ENABLED:-0}
     volumes:
       - ${PROJECT_ROOT}:/app   # set by the script below
       - ${CLAUDE_SETTINGS_DIR}:/settings
@@ -36,4 +38,4 @@ services:
           create_host_path: true
     stdin_open: true           # same as -i
     tty: true                  # same as -t
-    network_mode: "bridge"     # explicit: outbound internet via NAT, no inbound ports
+    network_mode: "bridge"     # isolated network, no host access needed for standalone mode
