@@ -87,15 +87,33 @@ fi
 YOLO=0
 ROOT_MODE=0
 PLAYWRIGHT=0
+USE_API_KEY=0
 for arg in "${FLAGS[@]}"; do
   [[ "$arg" == "--yolo" ]] && YOLO=1
   [[ "$arg" == "--root" ]] && ROOT_MODE=1
   [[ "$arg" == "--playwright" ]] && PLAYWRIGHT=1
   [[ "$arg" == "--playwrite" ]] && PLAYWRIGHT=1  # Support common misspelling
+  [[ "$arg" == "--api" ]] && USE_API_KEY=1
 done
+
+# --api flag: load key from ~/.anthropic_api_key and pass into container.
+# Without this flag, sessions use OAuth (Pro quota) as normal.
+if [[ $USE_API_KEY -eq 1 ]]; then
+  KEY_FILE="${HOME}/.anthropic_api_key"
+  if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+    if [[ ! -f "$KEY_FILE" ]]; then
+      echo "Error: --api flag set but no key found. Set ANTHROPIC_API_KEY or create ~/.anthropic_api_key" >&2
+      exit 1
+    fi
+    ANTHROPIC_API_KEY="$(cat "$KEY_FILE")"
+  fi
+  export ANTHROPIC_API_KEY
+  echo "API key loaded — this session will use Anthropic API billing, not Pro quota."
+fi
 
 export LOCAL_UID="$(id -u)"
 export LOCAL_GID="$(id -g)"
+
 
 [[ $ROOT_MODE -eq 1 ]] \
   && { export LOCAL_UID=0; export LOCAL_GID=0; } \
@@ -148,9 +166,16 @@ if [[ $PLAYWRIGHT -eq 1 ]]; then
   echo "Make sure Chrome is running with: chrome --remote-debugging-port=9222"
 fi
 
+# Build extra args for docker compose run — only inject API key when explicitly requested.
+# This guarantees ANTHROPIC_API_KEY never reaches the container in normal Pro sessions.
+EXTRA_ARGS=()
+if [[ $USE_API_KEY -eq 1 ]]; then
+  EXTRA_ARGS+=(-e "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}")
+fi
+
 if [[ $YOLO -eq 1 ]]; then
   echo "YOLO: passing --dangerously-skip-permissions to claude CLI"
-  exec $COMPOSE -f "$COMPOSE_FILE" run --rm --name "$NAME" -it claude claude --dangerously-skip-permissions
+  exec $COMPOSE -f "$COMPOSE_FILE" run --rm --name "$NAME" "${EXTRA_ARGS[@]}" -it claude claude --dangerously-skip-permissions
 else
-  exec $COMPOSE -f "$COMPOSE_FILE" run --rm --name "$NAME" -it claude
+  exec $COMPOSE -f "$COMPOSE_FILE" run --rm --name "$NAME" "${EXTRA_ARGS[@]}" -it claude
 fi
