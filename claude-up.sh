@@ -53,6 +53,7 @@ done
 
 # Default container name; allow --name foo or --name=foo
 NAME="claude-code"
+PROMPT_FILE=""
 i=0
 while [[ $i -lt ${#FLAGS[@]} ]]; do
   arg="${FLAGS[$i]}"
@@ -63,9 +64,21 @@ while [[ $i -lt ${#FLAGS[@]} ]]; do
     --name)
       if [[ $((i+1)) -lt ${#FLAGS[@]} ]]; then
         NAME="${FLAGS[$((i+1))]}"
-        i=$((i+1))  # Skip next argument since we consumed it
+        i=$((i+1))
       else
         echo "Error: --name requires a value" >&2
+        exit 1
+      fi
+      ;;
+    --prompt-file=*)
+      PROMPT_FILE="${arg#--prompt-file=}"
+      ;;
+    --prompt-file)
+      if [[ $((i+1)) -lt ${#FLAGS[@]} ]]; then
+        PROMPT_FILE="${FLAGS[$((i+1))]}"
+        i=$((i+1))
+      else
+        echo "Error: --prompt-file requires a path argument" >&2
         exit 1
       fi
       ;;
@@ -109,6 +122,16 @@ if [[ $USE_API_KEY -eq 1 ]]; then
   fi
   export ANTHROPIC_API_KEY
   echo "API key loaded — this session will use Anthropic API billing, not Pro quota."
+fi
+
+# --prompt-file: resolve to absolute path and validate
+if [[ -n "$PROMPT_FILE" ]]; then
+  PROMPT_FILE="$(cd "$(dirname "$PROMPT_FILE")" && pwd)/$(basename "$PROMPT_FILE")"
+  if [[ ! -f "$PROMPT_FILE" ]]; then
+    echo "Error: prompt file not found: $PROMPT_FILE" >&2
+    exit 1
+  fi
+  echo "Prompt file: $PROMPT_FILE (non-interactive mode)"
 fi
 
 export LOCAL_UID="$(id -u)"
@@ -172,10 +195,23 @@ EXTRA_ARGS=()
 if [[ $USE_API_KEY -eq 1 ]]; then
   EXTRA_ARGS+=(-e "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}")
 fi
+if [[ -n "$PROMPT_FILE" ]]; then
+  EXTRA_ARGS+=(-v "${PROMPT_FILE}:/prompt/input.md:ro")
+fi
 
-if [[ $YOLO -eq 1 ]]; then
-  echo "YOLO: passing --dangerously-skip-permissions to claude CLI"
-  exec $COMPOSE -f "$COMPOSE_FILE" run --rm --name "$NAME" "${EXTRA_ARGS[@]}" -it claude claude --dangerously-skip-permissions
+if [[ -n "$PROMPT_FILE" ]]; then
+  # Non-interactive pipeline mode: run prompt and exit
+  CLAUDE_ARGS=(-p "$(cat "$PROMPT_FILE")" --no-session-persistence)
+  [[ $YOLO -eq 1 ]] && CLAUDE_ARGS+=(--dangerously-skip-permissions)
+  [[ -n "${MAX_BUDGET_USD:-}" ]] && CLAUDE_ARGS+=(--max-budget-usd "$MAX_BUDGET_USD")
+  exec $COMPOSE -f "$COMPOSE_FILE" run --rm --name "$NAME" "${EXTRA_ARGS[@]}" \
+    claude claude "${CLAUDE_ARGS[@]}"
 else
-  exec $COMPOSE -f "$COMPOSE_FILE" run --rm --name "$NAME" "${EXTRA_ARGS[@]}" -it claude
+  # Normal interactive mode
+  if [[ $YOLO -eq 1 ]]; then
+    echo "YOLO: passing --dangerously-skip-permissions to claude CLI"
+    exec $COMPOSE -f "$COMPOSE_FILE" run --rm --name "$NAME" "${EXTRA_ARGS[@]}" -it claude claude --dangerously-skip-permissions
+  else
+    exec $COMPOSE -f "$COMPOSE_FILE" run --rm --name "$NAME" "${EXTRA_ARGS[@]}" -it claude
+  fi
 fi
