@@ -12,6 +12,7 @@ services:
       # Security tool environment variables
       - GOPATH=/settings/go
       - PATH=/usr/local/go/bin:/root/go/bin:/settings/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - PLAYWRIGHT_ENABLED=${PLAYWRIGHT_ENABLED:-0}
     volumes:
       - ${PROJECT_ROOT}:/app
       - ${CLAUDE_SETTINGS_DIR}:/settings
